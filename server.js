@@ -55,7 +55,20 @@ if (!process.env.JWT_SECRET) {
 // ---------- Seed owner account ----------
 function seedOwner() {
   const existing = db.allUsers().find((u) => u.role === 'owner');
-  if (existing) return;
+  if (existing) {
+    // One-time owner password recovery. When FORCE_OWNER_RESET=1 is set,
+    // reset the existing owner's password to OWNER_PASSWORD, then log a
+    // reminder to remove that env var so future restarts don't overwrite
+    // any password change made from inside the app.
+    if (process.env.FORCE_OWNER_RESET === '1') {
+      db.updateUser(existing.id, {
+        passwordHash: bcrypt.hashSync(OWNER_PASSWORD, 10),
+        tokenVersion: (existing.tokenVersion || 1) + 1,
+      });
+      console.log(`[seed] Owner password RESET to OWNER_PASSWORD for ${existing.email}. Remove the FORCE_OWNER_RESET env var now.`);
+    }
+    return;
+  }
   const hash = bcrypt.hashSync(OWNER_PASSWORD, 10);
   db.addUser({
     id: 'OWNER',
