@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orpa — Owner Admin</title>
+<meta name="theme-color" content="#6B22ED">
+<style>
+:root{--a:#35A9F5;--b:#6B22ED;--grad:linear-gradient(135deg,#35A9F5,#6B22ED);--ink:#1e2430;--muted:#6b7280;--line:#e7e9f0;--soft:#f6f7fb;--green:#1B5E20;--red:#C62828;--orange:#E65100}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#eef0f6;color:var(--ink)}
+.top{background:var(--grad);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.top .brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:18px}
+.top .mark{height:34px;background:rgba(255,255,255,.18);border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 8px}
+.top .who{font-size:12px;opacity:.9}
+.top button{background:rgba(255,255,255,.16);color:#fff;border:none;padding:7px 14px;border-radius:7px;font-weight:600;cursor:pointer;font-size:13px}
+.top button:hover{background:rgba(255,255,255,.28)}
+.wrap{max-width:1080px;margin:22px auto;padding:0 18px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+.card .n{font-size:28px;font-weight:800;color:var(--b)}
+.card .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.panel h2{margin:0;padding:14px 18px;font-size:15px;background:var(--soft);border-bottom:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;padding:10px 14px;background:#fafbff;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--line)}
+td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.on{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2)}
+.off{background:#c9ced8}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700}
+.pill.active{background:#e6f7ed;color:var(--green)}
+.pill.suspended{background:#fdecea;color:var(--red)}
+.pill.pending{background:#fff8e1;color:#8a6d00}
+.pill.owner{background:#efe7fd;color:var(--b)}
+.btn{border:none;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;margin:1px}
+.btn.s{background:#fff3e0;color:var(--orange)}
+.btn.a{background:#e6f7ed;color:var(--green)}
+.btn.ap{background:#ede9fe;color:var(--b)}
+.btn.k{background:#eef2ff;color:#3730a3}
+.btn.d{background:#fdecea;color:var(--red)}
+.btn:hover{filter:brightness(.95)}
+.empty{padding:24px;text-align:center;color:var(--muted)}
+.err{background:#fdecea;color:var(--red);padding:10px 18px;font-size:13px;display:none}
+.hint{font-size:11px;color:var(--muted);padding:8px 18px}
+@media(max-width:720px){.cards{grid-template-columns:repeat(2,1fr)}}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-card{background:#fff;border-radius:14px;padding:22px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.af-field{margin-bottom:12px}
+.af-field label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="brand">
+    <div class="mark"><img src="orpa-logo.png" alt="Orpa" style="height:26px;width:auto;border-radius:5px;display:block"></div>
+    Owner Admin
+  </div>
+  <div style="display:flex;align-items:center;gap:14px">
+    <span class="who" id="who"></span>
+    <button onclick="location.href='index.html'">← Back to App</button>
+  </div>
+</div>
+<div class="err" id="err"></div>
+<div class="wrap">
+  <div class="cards">
+    <div class="card"><div class="n" id="cTotal">–</div><div class="l">Total Accounts</div></div>
+    <div class="card"><div class="n" id="cOnline">–</div><div class="l">Online Now</div></div>
+    <div class="card"><div class="n" id="cActive">–</div><div class="l">Active</div></div>
+    <div class="card"><div class="n" id="cPending" style="color:#8a6d00">–</div><div class="l">Awaiting Approval</div></div>
+    <div class="card"><div class="n" id="cSusp">–</div><div class="l">Suspended</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>🟢 Live Sessions <span style="font-weight:400;color:#6b7280;font-size:12px">(updates in real time)</span></h2>
+    <div id="live"></div>
+  </div>
+
+  <div class="panel">
+    <h2>👥 All Accounts</h2>
+    <div id="users"></div>
+    <div class="hint">New sign-ups start as <strong>Pending</strong> and cannot log in until you click <strong>Approve</strong>. Use <strong>Assign</strong> to place a teacher in a school as an <em>Admin</em> (whole school) or a <em>Class Teacher</em> (one grade). Suspend blocks login and instantly signs the user out. Force sign-out ends their current session. Delete removes the account permanently.</div>
+  </div>
+
+  <div class="panel">
+    <h2>🏫 Schools</h2>
+    <div style="padding:12px 18px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line)">
+      <input id="newSchoolName" placeholder="New school name" style="flex:1;min-width:180px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px">
+      <button class="btn ap" style="padding:8px 14px" onclick="addSchool()">+ Add School</button>
+    </div>
+    <div id="schools"></div>
+  </div>
+
+  <div class="panel">
+    <h2>🌐 Zone Logo (watermark on all downloads)</h2>
+    <div style="padding:14px 18px;display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <div id="zoneLogoPreview" style="width:120px;height:80px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--soft);overflow:hidden"><span style="font-size:11px;color:var(--muted)">No zone logo</span></div>
+      <div>
+        <button class="btn ap" style="padding:8px 14px" onclick="document.getElementById('zoneLogoInput').click()">Upload / Replace</button>
+        <button class="btn d" style="padding:8px 14px" onclick="removeZoneLogo()">Remove</button>
+        <input type="file" id="zoneLogoInput" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="onZoneLogoPicked(this)">
+        <div class="hint" style="padding:6px 0 0">Appears as a faint (~8%) centred watermark on every download for every school.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>🏆 Zone Ranking &amp; Completion <span style="font-weight:400;color:#6b7280;font-size:12px">(schools appear once they submit)</span></h2>
+    <div style="padding:8px 18px"><button class="btn k" style="padding:7px 14px" onclick="loadOverview()">↻ Refresh</button></div>
+    <div id="overview"></div>
+    <div id="completion" style="padding:6px 18px 18px"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const TOKEN=localStorage.getItem('af_token');
+function hdr(){return{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN}}
+function showErr(m){const e=document.getElementById('err');e.textContent=m;e.style.display='block'}
+function ago(ts){if(!ts)return'–';const s=Math.floor((Date.now()-ts)/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';return Math.floor(s/3600)+'h ago'}
+
+async function api(path,opts={}){
+  const res=await fetch(path,Object.assign({headers:hdr()},opts));
+  let d={};try{d=await res.json()}catch(e){}
+  if(!res.ok)throw new Error(d.error||('Error '+res.status));
+  return d;
+}
+
+let me=null;
+async function guard(){
+  if(!TOKEN){location.href='index.html';return false}
+  try{const d=await api('/api/me');me=d.user;
+    if(me.role!=='owner'){document.body.innerHTML='<p style="padding:40px;text-align:center;font-family:sans-serif">Owner access only. <a href="index.html">Return to app</a></p>';return false}
+    document.getElementById('who').textContent=me.email;
+    return true;
+  }catch(e){location.href='index.html';return false}
+}
+
+let lastUsers=[];
+function renderUsers(users){
+  lastUsers=users;
+  const online=users.filter(u=>u.online).length;
+  const active=users.filter(u=>u.status==='active').length;
+  const pending=users.filter(u=>u.status==='pending').length;
+  const susp=users.filter(u=>u.status==='suspended').length;
+  document.getElementById('cTotal').textContent=users.length;
+  document.getElementById('cOnline').textContent=online;
+  document.getElementById('cActive').textContent=active;
+  const cp=document.getElementById('cPending');if(cp)cp.textContent=pending;
+  document.getElementById('cSusp').textContent=susp;
+
+  const wrap=document.getElementById('users');
+  wrap.innerHTML='';
+  if(!users.length){wrap.innerHTML='<div class="empty">No accounts yet.</div>';return}
+  const tbl=document.createElement('table');
+  const thead=document.createElement('thead');
+  thead.innerHTML='<tr><th>Status</th><th>Name</th><th>Email</th><th>School</th><th>Role</th><th>State</th><th>Actions</th></tr>';
+  tbl.appendChild(thead);
+  const tb=document.createElement('tbody');
+  users.forEach(u=>{
+    const tr=document.createElement('tr');
+    const cell=(fn)=>{const td=document.createElement('td');fn(td);tr.appendChild(td)};
+    cell(td=>{const d=document.createElement('span');d.className='dot '+(u.online?'on':'off');td.appendChild(d);td.appendChild(document.createTextNode(u.online?'Online':'Offline'))});
+    cell(td=>td.textContent=u.name||'–');
+    cell(td=>td.textContent=u.email);
+    cell(td=>td.textContent=u.school||'–');
+    cell(td=>{
+      const p=document.createElement('span');p.className='pill '+(u.role==='owner'?'owner':'');p.textContent=u.role;td.appendChild(p);
+      if(u.role!=='owner'&&u.schoolRole){
+        const a=document.createElement('div');a.style.cssText='font-size:11px;color:var(--muted);margin-top:3px';
+        a.textContent=(u.schoolRole==='admin'?'Admin · whole school':('Class Teacher · Grade '+(u.assignedGrade||'?')))+(u.schoolName?(' · '+u.schoolName):'');
+        td.appendChild(a);
+      }
+    });
+    cell(td=>{const p=document.createElement('span');p.className='pill '+u.status;p.textContent=u.status;td.appendChild(p)});
+    cell(td=>{
+      if(u.role==='owner'){td.textContent='—';return}
+      if(u.status==='pending'){
+        const b=document.createElement('button');b.className='btn ap';b.textContent='✓ Approve';b.onclick=()=>act('activate',u);td.appendChild(b);
+        const r=document.createElement('button');r.className='btn d';r.textContent='Reject';r.onclick=()=>act('delete',u);td.appendChild(r);
+      }else if(u.status==='active'){
+        const b=document.createElement('button');b.className='btn s';b.textContent='Suspend';b.onclick=()=>act('suspend',u);td.appendChild(b);
+      }else{
+        const b=document.createElement('button');b.className='btn a';b.textContent='Activate';b.onclick=()=>act('activate',u);td.appendChild(b);
+      }
+      if(u.online){const k=document.createElement('button');k.className='btn k';k.textContent='Force sign-out';k.onclick=()=>act('logout',u);td.appendChild(k)}
+      if(u.status!=='pending'){const asg=document.createElement('button');asg.className='btn ap';asg.textContent='Assign';asg.onclick=()=>openAssign(u);td.appendChild(asg)}
+      const del=document.createElement('button');del.className='btn d';del.textContent='Delete';del.onclick=()=>act('delete',u);td.appendChild(del);
+    });
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  wrap.appendChild(tbl);
+}
+
+async function act(kind,u){
+  const labels={suspend:'suspend',activate:'activate',logout:'force sign-out',delete:'permanently delete'};
+  if(kind==='delete'&&!confirm('Permanently delete the account for '+u.email+'? This cannot be undone.'))return;
+  if(kind==='suspend'&&!confirm('Suspend '+u.email+'? They will be signed out immediately and cannot log in until reactivated.'))return;
+  let reason='';
+  if(kind==='suspend'){
+    reason=prompt('Optional: add a reason for the suspension. This will be included in the email sent to the teacher. Leave blank to send the default message.','')||'';
+  }
+  try{
+    if(kind==='delete'){await api('/api/admin/users/'+u.id,{method:'DELETE'});}
+    else if(kind==='suspend'){await api('/api/admin/users/'+u.id+'/suspend',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},hdr()),body:JSON.stringify({reason:reason})});}
+    else{await api('/api/admin/users/'+u.id+'/'+kind,{method:'POST'});}
+    await loadUsers();
+  }catch(e){showErr(e.message)}
+}
+
+async function loadUsers(){try{const d=await api('/api/admin/users');renderUsers(d.users)}catch(e){showErr(e.message)}}
+
+// ---------- Schools ----------
+let lastSchools=[];
+function renderSchools(schools){
+  lastSchools=schools;
+  const wrap=document.getElementById('schools');
+  wrap.innerHTML='';
+  if(!schools.length){wrap.innerHTML='<div class="empty">No schools yet. Add one above.</div>';return}
+  const tbl=document.createElement('table');
+  const thead=document.createElement('thead');
+  thead.innerHTML='<tr><th>Name</th><th>Members</th><th>Submissions</th><th>Logo</th><th>Actions</th></tr>';
+  tbl.appendChild(thead);
+  const tb=document.createElement('tbody');
+  schools.forEach(s=>{
+    const tr=document.createElement('tr');
+    const cell=(fn)=>{const td=document.createElement('td');fn(td);tr.appendChild(td)};
+    cell(td=>{td.innerHTML='<strong>'+esc(s.name)+'</strong>'});
+    cell(td=>{
+      if(!s.members||!s.members.length){td.textContent='No members';return}
+      s.members.forEach((m,i)=>{
+        if(i)td.appendChild(document.createElement('br'));
+        const d=document.createElement('span');d.className='dot '+(m.online?'on':'off');d.style.cssText='width:7px;height:7px';td.appendChild(d);
+        const txt=document.createTextNode(m.name+(m.schoolRole==='admin'?' (Admin)':' (G'+m.assignedGrade+')'));
+        td.appendChild(txt);
+      });
+    });
+    cell(td=>{
+      const sub=Object.keys(s.submitted||{}).filter(g=>s.submitted[g]);
+      if(!sub.length){td.textContent='None yet';return}
+      td.textContent=sub.map(g=>'G'+g).join(', ');
+    });
+    cell(td=>td.textContent=s.hasLogo?'✅':'–');
+    cell(td=>{
+      const ren=document.createElement('button');ren.className='btn k';ren.textContent='Rename';ren.onclick=()=>renameSchool(s);td.appendChild(ren);
+      const del=document.createElement('button');del.className='btn d';del.textContent='Delete';del.onclick=()=>deleteSchool(s);td.appendChild(del);
+    });
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);wrap.appendChild(tbl);
+}
+function esc(s){return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''}
+async function addSchool(){
+  const name=document.getElementById('newSchoolName').value.trim();if(!name)return showErr('Enter a school name.');
+  try{await api('/api/admin/schools',{method:'POST',headers:hdr(),body:JSON.stringify({name})});document.getElementById('newSchoolName').value='';await loadSchools();}catch(e){showErr(e.message)}
+}
+async function renameSchool(s){
+  const name=prompt('New name for '+s.name+':',s.name);if(!name||!name.trim())return;
+  try{await api('/api/admin/schools/'+s.id,{method:'PATCH',headers:hdr(),body:JSON.stringify({name:name.trim()})});await loadSchools();}catch(e){showErr(e.message)}
+}
+async function deleteSchool(s){
+  if(!confirm('Delete '+s.name+' and detach all its members?'))return;
+  try{await api('/api/admin/schools/'+s.id,{method:'DELETE',headers:hdr()});await loadSchools();await loadUsers();}catch(e){showErr(e.message)}
+}
+async function loadSchools(){try{const d=await api('/api/admin/schools');renderSchools(d.schools)}catch(e){showErr(e.message)}}
+
+// ---------- Assign teacher to school ----------
+function openAssign(u){
+  const existing=u.schoolId?lastSchools.find(s=>s.id===u.schoolId):null;
+  let html='<div class="modal-backdrop" id="assignBackdrop" onclick="if(event.target===this)closeAssign()">'+
+    '<div class="modal-card">'+
+    '<h3 style="margin:0 0 14px;font-size:15px;color:var(--b)">Assign '+esc(u.name)+' ('+esc(u.email)+')</h3>'+
+    '<div class="af-field"><label>School</label><select id="asgSchool" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px">'+
+    '<option value="">— Unassign —</option>';
+  lastSchools.forEach(s=>{html+='<option value="'+s.id+'"'+(u.schoolId===s.id?' selected':'')+'>'+esc(s.name)+'</option>'});
+  html+='</select></div>'+
+    '<div class="af-field"><label>Role</label><select id="asgRole" onchange="asgRoleChanged()" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px">'+
+    '<option value="admin"'+(u.schoolRole==='admin'?' selected':'')+'>Admin (whole school)</option>'+
+    '<option value="class_teacher"'+(u.schoolRole==='class_teacher'?' selected':'')+'>Class Teacher (one grade)</option>'+
+    '</select></div>'+
+    '<div class="af-field" id="asgGradeWrap" style="display:'+(u.schoolRole==='class_teacher'?'block':'none')+'"><label>Grade</label><select id="asgGrade" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px">';
+  for(let g=1;g<=9;g++)html+='<option value="'+g+'"'+(String(u.assignedGrade)===String(g)?' selected':'')+'>Grade '+g+'</option>';
+  html+='</select></div>'+
+    '<div style="display:flex;gap:10px;margin-top:14px">'+
+    '<button class="btn ap" style="padding:9px 18px" onclick="doAssign(\''+u.id+'\')">Save</button>'+
+    '<button class="btn" style="padding:9px 18px;background:#eee" onclick="closeAssign()">Cancel</button>'+
+    '</div></div></div>';
+  const m=document.createElement('div');m.innerHTML=html;document.body.appendChild(m.firstChild);
+}
+function asgRoleChanged(){document.getElementById('asgGradeWrap').style.display=document.getElementById('asgRole').value==='class_teacher'?'block':'none'}
+function closeAssign(){const m=document.getElementById('assignBackdrop');if(m)m.remove()}
+async function doAssign(uid){
+  const schoolId=document.getElementById('asgSchool').value||null;
+  const schoolRole=document.getElementById('asgRole').value;
+  const assignedGrade=schoolRole==='class_teacher'?document.getElementById('asgGrade').value:null;
+  try{
+    await api('/api/admin/users/'+uid+'/assign',{method:'POST',headers:hdr(),body:JSON.stringify({schoolId,schoolRole,assignedGrade})});
+    closeAssign();await loadUsers();await loadSchools();
+  }catch(e){showErr(e.message)}
+}
+
+// ---------- Zone logo ----------
+let currentZoneLogo=null;
+function renderZoneLogo(){
+  const box=document.getElementById('zoneLogoPreview');
+  if(!box)return;
+  box.innerHTML=currentZoneLogo
+    ?'<img src="'+currentZoneLogo+'" style="max-width:120px;max-height:80px;object-fit:contain;opacity:.18">'
+    :'<span style="font-size:11px;color:var(--muted)">No zone logo</span>';
+}
+function onZoneLogoPicked(input){
+  const file=input&&input.files&&input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(){
+    const img=new Image();
+    img.onload=function(){
+      const max=480;let w=img.naturalWidth,h=img.naturalHeight;
+      if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r)}
+      const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+      let dataUrl;try{dataUrl=c.toDataURL('image/png')}catch(e){dataUrl=reader.result}
+      api('/api/admin/zone-logo',{method:'POST',headers:hdr(),body:JSON.stringify({logo:dataUrl})})
+        .then(r=>{currentZoneLogo=r.zoneLogo;renderZoneLogo()})
+        .catch(e=>showErr(e.message));
+    };
+    img.onerror=()=>showErr('Could not read that image.');
+    img.src=reader.result;
+  };
+  reader.readAsDataURL(file);input.value='';
+}
+async function removeZoneLogo(){
+  try{await api('/api/admin/zone-logo',{method:'POST',headers:hdr(),body:JSON.stringify({logo:null})});currentZoneLogo=null;renderZoneLogo()}catch(e){showErr(e.message)}
+}
+async function loadZoneLogo(){try{const d=await api('/api/admin/zone-logo');currentZoneLogo=d.zoneLogo;renderZoneLogo()}catch(e){}}
+
+// ---------- Overview: ranking & completion ----------
+let lastOverview=null;
+function renderOverview(data){
+  lastOverview=data;
+  // Ranking table
+  const ow=document.getElementById('overview');
+  ow.innerHTML='';
+  const vis=data.schools.filter(s=>s.visible);
+  if(!vis.length){ow.innerHTML='<div class="empty">No schools have submitted results yet. Schools appear here once a teacher clicks \"Submit to Zone\".</div>';return}
+  const tbl=document.createElement('table');
+  const thead=document.createElement('thead');
+  thead.innerHTML='<tr><th>Rank</th><th>School</th><th>Overall Avg %</th><th>Submitted</th>';
+  for(let g=1;g<=9;g++)thead.querySelector('tr').innerHTML+='<th>G'+g+'</th>';
+  tbl.appendChild(thead);
+  const tb=document.createElement('tbody');
+  vis.forEach(s=>{
+    const tr=document.createElement('tr');
+    const add=(txt,em)=>{const td=document.createElement('td');if(em)td.style.fontWeight='700';td.textContent=txt;tr.appendChild(td)};
+    add(s.rank||'–',true);
+    add(s.name,true);
+    add(s.overallAvg!==null?s.overallAvg+'%':'–',true);
+    add(s.submittedCount+'/9');
+    for(let g=1;g<=9;g++){const pg=s.perGrade[g];add(pg&&pg.avgPct!==null?pg.avgPct+'%':'–')}
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);ow.appendChild(tbl);
+
+  // Completion per grade
+  const cw=document.getElementById('completion');
+  let ch='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';
+  for(let g=1;g<=9;g++){
+    const c=data.completion[g];
+    const pct=c?c.pct:0;
+    const bar='#'+(pct>=80?'2e7d32':pct>=50?'f9a825':'ef5350');
+    ch+='<div style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-align:center">'+
+      '<div style="font-weight:800;color:var(--b)">Grade '+g+'</div>'+
+      '<div style="font-size:20px;font-weight:800;color:'+bar+'">'+pct+'%</div>'+
+      '<div style="font-size:10px;color:var(--muted)">'+(c?c.submitted:0)+'/'+(c?c.total:0)+' schools</div>'+
+      '<div style="height:6px;background:var(--line);border-radius:3px;margin-top:5px"><div style="height:100%;width:'+pct+'%;background:'+bar+';border-radius:3px"></div></div>'+
+      '</div>';
+  }
+  ch+='</div>';cw.innerHTML=ch;
+}
+async function loadOverview(){
+  try{const d=await api('/api/admin/overview');renderOverview(d)}catch(e){showErr(e.message)}
+}
+
+function renderLive(sessions){
+  const wrap=document.getElementById('live');
+  wrap.innerHTML='';
+  if(!sessions||!sessions.length){wrap.innerHTML='<div class="empty">No teachers are online right now.</div>';document.getElementById('cOnline').textContent='0';return}
+  document.getElementById('cOnline').textContent=sessions.length;
+  const tbl=document.createElement('table');
+  tbl.innerHTML='<thead><tr><th>Teacher</th><th>Email</th><th>Working On</th><th>Devices</th><th>Last Active</th></tr></thead>';
+  const tb=document.createElement('tbody');
+  sessions.forEach(s=>{
+    const tr=document.createElement('tr');
+    const add=(txt)=>{const td=document.createElement('td');td.textContent=txt;tr.appendChild(td)};
+    add(s.name||'–');add(s.email||'–');add(s.grade?('Grade '+s.grade):'–');add(String(s.sockets));add(ago(s.lastActive));
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);wrap.appendChild(tbl);
+  // reflect online dots in the users table without a full reload
+  if(lastUsers.length){const on=new Set(sessions.map(s=>s.id));lastUsers.forEach(u=>u.online=on.has(u.id));renderUsers(lastUsers)}
+}
+
+(async function(){
+  if(!(await guard()))return;
+  await loadUsers();
+  await loadSchools();
+  await loadZoneLogo();
+  await loadOverview();
+  const socket=io({auth:{token:TOKEN}});
+  socket.on('presence',renderLive);
+  socket.on('connect_error',()=>showErr('Live connection failed — session list may be stale.'));
+  // periodic full refresh to catch account changes
+  setInterval(function(){loadUsers();loadSchools();loadOverview();},20000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+# =============================================================
+# Orpa — Docker Compose (Portable Full Stack)
+# =============================================================
+# One command to start Orpa with an optional PostgreSQL
+# database. Data persists in named Docker volumes.
+#
+# Quick start:
+#   docker compose up -d          # start everything
+#   docker compose logs -f       # watch logs
+#   docker compose down          # stop (data kept)
+#   docker compose down -v      # stop AND delete data
+#
+# =============================================================
+
+services:
+  orpa:
+    build:
+      context: ..
+      dockerfile: linux-full/Dockerfile
+    container_name: orpa
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      # --- Set these before first run ---
+      - JWT_SECRET=${JWT_SECRET:-}
+      - OWNER_EMAIL=${OWNER_EMAIL:-owner@orpa.local}
+      - OWNER_PASSWORD=${OWNER_PASSWORD:-changeme123}
+      # --- PostgreSQL (uncomment when db service is active) ---
+      # - DATABASE_URL=postgres://orpa:orpa@db:5432/orpa
+      # --- Email (optional) ---
+      - EMAIL_SMTP_HOST=${EMAIL_SMTP_HOST:-}
+      - EMAIL_SMTP_PORT=${EMAIL_SMTP_PORT:-587}
+      - EMAIL_SMTP_USER=${EMAIL_SMTP_USER:-}
+      - EMAIL_SMTP_PASS=${EMAIL_SMTP_PASS:-}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+    volumes:
+      - orpa-data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ---- PostgreSQL (optional — uncomment to enable) ----
+  # db:
+  #   image: postgres:16-alpine
+  #   container_name: orpa-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: orpa
+  #     POSTGRES_PASSWORD: orpa
+  #     POSTGRES_DB: orpa
+  #   volumes:
+  #     - orpa-pgdata:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U orpa"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+volumes:
+  orpa-data:
+  # orpa-pgdata:

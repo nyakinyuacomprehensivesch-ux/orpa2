@@ -1,0 +1,27 @@
+# Render Blueprint — one-click deploy of Orpa with a managed PostgreSQL DB.
+# In Render: New → Blueprint → point at this repo. Render reads this file,
+# creates the web service + database, and wires DATABASE_URL automatically.
+# After the first deploy, set OWNER_EMAIL / OWNER_PASSWORD in the dashboard.
+services:
+  - type: web
+    name: orpa-brand-service   # live at https://orpa-brand-service.onrender.com
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true          # Render generates a strong random secret
+      - key: OWNER_EMAIL
+        sync: false                  # set your admin email in the dashboard
+      - key: OWNER_PASSWORD
+        sync: false                  # set a strong admin password in the dashboard
+      - key: DATABASE_URL
+        fromDatabase:
+          name: orpa-db
+          property: connectionString
+
+databases:
+  - name: orpa-db
+    plan: free
