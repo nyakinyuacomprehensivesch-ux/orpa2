@@ -693,7 +693,12 @@ io.on('connection', (socket) => {
 
 async function init() {
   try {
-    await db.load();
+    // Connect to PostgreSQL first (loads the cache + flips db into PG mode).
+    // Only fall back to the local JSON store when there is no DATABASE_URL
+    // or the connection fails — otherwise data would silently go to the
+    // ephemeral disk and be lost on every redeploy/restart.
+    const connected = await db.init();
+    if (!connected) db.load();
   } catch (e) {
     console.error('[fatal] Could not load the datastore:', e.message);
     process.exit(1);
