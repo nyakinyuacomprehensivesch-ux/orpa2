@@ -317,3 +317,32 @@ td.pl-2,td.pl-1{color:var(--red)}
 /* ORPA logo image */
 .auth-header .orpa-logo{width:80%;max-width:230px;height:auto;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.28);display:block;margin:0 auto 8px}
 .topbar .topbar-logo{height:28px;width:auto;border-radius:5px;display:block}
+
+/* ===== Upgrade: always-visible scrollbars ===== */
+.sheet-wrap,.view-panel,.content,.search-body{scrollbar-width:auto;scrollbar-color:#9b7fd4 #ece6f7}
+.sheet-wrap::-webkit-scrollbar,.view-panel::-webkit-scrollbar,.content::-webkit-scrollbar,.search-body::-webkit-scrollbar{width:14px;height:14px;-webkit-appearance:none}
+.sheet-wrap::-webkit-scrollbar-track,.view-panel::-webkit-scrollbar-track,.content::-webkit-scrollbar-track,.search-body::-webkit-scrollbar-track{background:#ece6f7;border-radius:8px}
+.sheet-wrap::-webkit-scrollbar-thumb,.view-panel::-webkit-scrollbar-thumb,.content::-webkit-scrollbar-thumb,.search-body::-webkit-scrollbar-thumb{background:#9b7fd4;border-radius:8px;border:3px solid #ece6f7}
+.sheet-wrap::-webkit-scrollbar-thumb:hover,.view-panel::-webkit-scrollbar-thumb:hover,.content::-webkit-scrollbar-thumb:hover{background:#5B18C4}
+.sheet-wrap::-webkit-scrollbar-corner{background:#ece6f7}
+
+/* ===== Upgrade: sidebar tools (motto / search) ===== */
+.sidebar .side-tool{margin:10px 6px;padding:8px;background:rgba(255,255,255,.08);border-radius:8px}
+.sidebar .side-tool .ps-label{margin-bottom:5px}
+
+/* ===== Upgrade: report-card motto + trend graph ===== */
+.report-card .rpt-motto{margin-top:10px;text-align:center;font-style:italic;font-weight:700;color:#5B18C4;font-size:12px;border-top:1px dashed #d8cbef;padding-top:8px}
+.report-card .trend-box{margin-top:12px;border:1px solid #e5ddf5;border-radius:8px;padding:8px}
+.report-card .trend-box .trend-title{font-size:11px;font-weight:800;color:#5B18C4;margin-bottom:4px;text-align:center}
+
+/* ===== Upgrade: archive-search modal ===== */
+.search-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:flex-start;justify-content:center;padding:40px 12px}
+.search-modal{background:#fff;border-radius:12px;max-width:900px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
+.search-head{padding:12px 16px;border-bottom:1px solid #eee;font-size:14px;position:relative}
+.search-head .search-x{position:absolute;right:10px;top:8px;border:none;background:#f0ecfa;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:14px}
+.search-body{overflow:auto;padding:8px 12px}
+.search-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.search-tbl th,.search-tbl td{border:1px solid #eee;padding:5px 8px;text-align:center}
+.search-tbl th{background:#f5f1fc;color:#5B18C4;position:sticky;top:0}
+.search-tbl .bold{font-weight:800}
+
