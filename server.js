@@ -317,8 +317,31 @@ app.put('/api/me/state', auth, (req, res) => {
 });
 
 // ---------- School-scoped grading data (shared per school) ----------
+// Subject count per grade (mirrors the front-end GRADE_CFG) — used when the
+// PROMOTE operation rebuilds blank mark rows for the new class.
+const SUBJECT_COUNT = { 1: 4, 2: 4, 3: 4, 4: 6, 5: 6, 6: 6, 7: 9, 8: 9, 9: 9 };
+const DEFAULT_OUTOF = {
+  1: [40, 40, 40, 40], 2: [40, 40, 40, 40], 3: [40, 40, 40, 40],
+  4: [40, 40, 40, 40, 40, 40], 5: [40, 40, 40, 40, 40, 40], 6: [40, 40, 40, 40, 40, 40],
+  7: [70, 70, 70, 70, 100, 70, 70, 70, 100], 8: [70, 70, 70, 70, 100, 70, 70, 70, 100],
+  9: [70, 70, 70, 70, 100, 70, 70, 70, 100],
+};
+const MAX_LEARNERS = 150;
+function blankLearners(grade, seed) {
+  // seed = optional array of {adm,name} to carry names/assess-nos forward.
+  const n = SUBJECT_COUNT[grade] || 4;
+  const out = [];
+  const src = Array.isArray(seed) ? seed : [];
+  for (let i = 0; i < MAX_LEARNERS; i++) {
+    const s = src[i] || {};
+    out.push({ adm: (s.adm || '').toString(), name: (s.name || '').toString(), raws: new Array(n).fill(null) });
+  }
+  return out;
+}
+
 function emptySchoolData() {
-  return { examName: '', examTerm: '', examYear: '', grades: {}, submitted: {}, submittedAt: {} };
+  return { examName: '', examTerm: '', examYear: '', grades: {}, submitted: {}, submittedAt: {},
+           archives: [], graduates: [], motto: '' };
 }
 function getOrInitSchoolData(schoolId) {
   let d = db.getSchoolData(schoolId);
@@ -326,7 +349,24 @@ function getOrInitSchoolData(schoolId) {
   if (!d.grades) d.grades = {};
   if (!d.submitted) d.submitted = {};
   if (!d.submittedAt) d.submittedAt = {};
+  if (!Array.isArray(d.archives)) d.archives = [];
+  if (!Array.isArray(d.graduates)) d.graduates = [];
+  if (typeof d.motto !== 'string') d.motto = '';
   return d;
+}
+
+// Keep only the last 3 consecutive years of archives (present year = year 3).
+function pruneArchives(data, refYear) {
+  const ry = parseInt(refYear, 10) || new Date().getFullYear();
+  data.archives = (data.archives || []).filter((a) => {
+    const y = parseInt(a.year, 10);
+    return !isNaN(y) && y >= ry - 2 && y <= ry;
+  });
+  // Graduated (Grade 9 leavers) records last only 1 year.
+  data.graduates = (data.graduates || []).filter((g) => {
+    const y = parseInt(g.gradYear, 10);
+    return !isNaN(y) && y >= ry - 1;
+  });
 }
 
 // GET the assigned school's shared dataset.
@@ -391,6 +431,134 @@ app.post('/api/school/submit', auth, (req, res) => {
   data.submittedAt[grade] = new Date().toISOString();
   db.saveSchoolData(u.schoolId, data);
   res.json({ ok: true, submitted: data.submitted });
+});
+
+// ---------- School motto ----------
+// The school ADMIN sets a motto that appears on report-card footers.
+app.put('/api/school/motto', auth, (req, res) => {
+  const u = req.user;
+  if (u.role === 'owner') return res.status(400).json({ error: 'Owner cannot edit school data.' });
+  if (!u.schoolId) return res.status(409).json({ error: 'no-assignment' });
+  if (u.schoolRole !== 'admin') return res.status(403).json({ error: 'Only a school admin can set the motto.' });
+  let motto = (req.body && req.body.motto);
+  if (typeof motto !== 'string') motto = '';
+  motto = motto.slice(0, 200);
+  const data = getOrInitSchoolData(u.schoolId);
+  data.motto = motto;
+  db.saveSchoolData(u.schoolId, data);
+  res.json({ ok: true, motto });
+});
+
+// ---------- Archive (PUSH) ----------
+// A school ADMIN pushes the CURRENT exam results into the searchable archive.
+// Snapshots are kept for the last 3 consecutive years (present year = year 3).
+app.post('/api/school/archive', auth, (req, res) => {
+  const u = req.user;
+  if (u.role === 'owner') return res.status(400).json({ error: 'Owner cannot archive.' });
+  if (!u.schoolId) return res.status(409).json({ error: 'no-assignment' });
+  if (u.schoolRole !== 'admin') return res.status(403).json({ error: 'Only a school admin can PUSH results to the archive.' });
+  const data = getOrInitSchoolData(u.schoolId);
+  const year = (data.examYear || '').toString().trim() || String(new Date().getFullYear());
+  const term = (data.examTerm || '').toString().trim();
+  const exam = (data.examName || '').toString().trim();
+  if (!data.grades || !Object.keys(data.grades).length) {
+    return res.status(400).json({ error: 'There are no results to archive yet.' });
+  }
+  const key = year + '|' + term + '|' + exam;
+  // Replace any existing snapshot for the same year/term/exam.
+  data.archives = (data.archives || []).filter((a) => (a.key !== key));
+  data.archives.push({
+    id: 'ar_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    key, year, term, exam,
+    archivedAt: new Date().toISOString(),
+    grades: JSON.parse(JSON.stringify(data.grades)),
+  });
+  pruneArchives(data, year);
+  db.saveSchoolData(u.schoolId, data);
+  res.json({ ok: true, archived: { year, term, exam }, count: data.archives.length });
+});
+
+// ---------- Search archived learners ----------
+// Admins search the whole school; class teachers are limited to their grade.
+app.get('/api/school/search', auth, (req, res) => {
+  const u = req.user;
+  if (u.role === 'owner') return res.status(400).json({ error: 'Owner uses the admin dashboard.' });
+  if (!u.schoolId) return res.status(409).json({ error: 'no-assignment' });
+  const isAdmin = u.schoolRole === 'admin';
+  const q = ((req.query.q || '') + '').trim().toLowerCase();
+  const fYear = ((req.query.year || '') + '').trim();
+  const fTerm = ((req.query.term || '') + '').trim();
+  const fExam = ((req.query.exam || '') + '').trim().toLowerCase();
+  const data = getOrInitSchoolData(u.schoolId);
+  const results = [];
+  (data.archives || []).forEach((ar) => {
+    if (fYear && (ar.year + '') !== fYear) return;
+    if (fTerm && (ar.term + '') !== fTerm) return;
+    if (fExam && !((ar.exam || '').toLowerCase().includes(fExam))) return;
+    Object.keys(ar.grades || {}).forEach((g) => {
+      const gn = parseInt(g, 10);
+      if (!isAdmin && gn !== u.assignedGrade) return; // class teacher: own grade only
+      const gd = ar.grades[g] || {};
+      (gd.learners || []).forEach((l) => {
+        const name = (l.name || '').toString();
+        const adm = (l.adm || '').toString();
+        if (!name.trim() && !adm.trim()) return;
+        if (q && !(name.toLowerCase().includes(q) || adm.toLowerCase().includes(q))) return;
+        results.push({ year: ar.year, term: ar.term, exam: ar.exam, grade: gn,
+                       adm, name, raws: l.raws || [], outOf: gd.outOf || [] });
+      });
+    });
+  });
+  res.json({ ok: true, results, count: results.length });
+});
+
+// ---------- Zone-wide PROMOTE (owner only) ----------
+// Advances every learner one grade across the whole zone. Grade 9 leavers are
+// moved to the graduates list (kept 1 year); Grade 1 is cleared for new intake.
+// Names and assessment numbers carry forward; marks reset for the new class.
+// An automatic backup snapshot is taken per school before the change.
+app.post('/api/admin/promote', auth, ownerOnly, (req, res) => {
+  const confirm = (req.body && req.body.confirm);
+  if (confirm !== 'CONFIRM') return res.status(400).json({ error: 'Type CONFIRM to run the promotion.' });
+  const gradYear = new Date().getFullYear();
+  const schools = db.allSchools();
+  let promoted = 0, graduated = 0;
+  schools.forEach((s) => {
+    const data = getOrInitSchoolData(s.id);
+    const old = data.grades || {};
+    // Auto-backup before promoting.
+    data._promoteBackup = { at: new Date().toISOString(), examName: data.examName,
+      examTerm: data.examTerm, examYear: data.examYear,
+      grades: JSON.parse(JSON.stringify(old)) };
+    // Grade 9 -> graduates.
+    const g9 = old[9];
+    if (g9 && Array.isArray(g9.learners)) {
+      g9.learners.forEach((l) => {
+        if ((l.name || '').trim() || (l.adm || '').trim()) {
+          data.graduates.push({ adm: l.adm || '', name: l.name || '', gradYear, school: s.name });
+          graduated++;
+        }
+      });
+    }
+    // Shift grades up (8->9, 7->8, ... 1->2); Grade 1 cleared.
+    const newGrades = {};
+    for (let g = 9; g >= 2; g--) {
+      const src = old[g - 1];
+      const seed = (src && Array.isArray(src.learners))
+        ? src.learners.filter((l) => (l.name || '').trim() || (l.adm || '').trim())
+                      .map((l) => ({ adm: l.adm || '', name: l.name || '' }))
+        : [];
+      promoted += seed.length;
+      newGrades[g] = { outOf: (DEFAULT_OUTOF[g] || []).slice(), learners: blankLearners(g, seed) };
+    }
+    newGrades[1] = { outOf: (DEFAULT_OUTOF[1] || []).slice(), learners: blankLearners(1, []) };
+    data.grades = newGrades;
+    data.submitted = {};
+    data.submittedAt = {};
+    pruneArchives(data, gradYear);
+    db.saveSchoolData(s.id, data);
+  });
+  res.json({ ok: true, schools: schools.length, promoted, graduated, gradYear });
 });
 
 // ---------- Logos ----------
@@ -737,3 +905,4 @@ init();
 
 process.on('SIGINT', () => { db.persistSync(); process.exit(0); });
 process.on('SIGTERM', () => { db.persistSync(); process.exit(0); });
+
