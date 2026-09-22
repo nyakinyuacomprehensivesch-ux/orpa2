@@ -53,7 +53,7 @@ let sessionToken=null;
 function userKey(){return 'nyak_'+currentUser.id}
 function globalKey(k){return 'nyak_global_'+k}
 
-let state={examName:'',examTerm:'',examYear:'',grades:{}};
+let state={examName:'',examTerm:'',examYear:'',grades:{},archives:[],graduates:[],motto:''};
 
 function defaultGrade(g){
   const cfg=GRADE_CFG.find(c=>c.g===g);
@@ -96,6 +96,9 @@ function reconcileGrade(g){
 function loadUserState(){
   try{const s=localStorage.getItem(userKey()+'_data');if(s)state=JSON.parse(s)}catch(e){}
   if(!state.grades)state.grades={};
+  if(!Array.isArray(state.archives))state.archives=[];
+  if(!Array.isArray(state.graduates))state.graduates=[];
+  if(typeof state.motto!=='string')state.motto='';
   for(let g=1;g<=9;g++){ if(!state.grades[g]) state.grades[g]=defaultGrade(g); else reconcileGrade(g); }
   const en=document.getElementById('examName');if(en)en.value=state.examName||'';
   const et=document.getElementById('examTerm');if(et)et.value=state.examTerm||'';
@@ -264,12 +267,21 @@ function buildWatermarkHTML(){
          `</div>`;
 }
 
+// Orpa brand stamp (two-arrow icon + logo) placed in the corner of every PDF
+// download so printed sheets are clearly identifiable as Orpa documents.
+function buildStampHTML(){
+  return `<div style="position:absolute;top:8px;right:10px;display:flex;align-items:center;gap:6px;z-index:2;opacity:.95">`+
+         `<img src="orpa-stamp.png" alt="" style="height:30px;width:30px;object-fit:contain">`+
+         `<img src="orpa-logo.png" alt="Orpa" style="height:22px;width:auto;object-fit:contain">`+
+         `</div>`;
+}
+
 // Wrap an element's HTML into a printable page that carries the school-logo
 // header and the faint zone watermark, then hand it to html2pdf.
 function exportElementToPDF(sourceEl,filename,subtitle,orientation){
   const wrap=document.createElement('div');
   wrap.style.cssText='position:relative;background:#fff;padding:14px 16px;font-family:inherit;';
-  wrap.innerHTML=buildWatermarkHTML();
+  wrap.innerHTML=buildWatermarkHTML()+buildStampHTML();
   const content=document.createElement('div');
   content.style.cssText='position:relative;z-index:1';
   content.innerHTML=buildDownloadHeaderHTML(subtitle)+sourceEl.outerHTML;
@@ -306,6 +318,38 @@ if(typeof window.refreshLogoPreview!=='function'){
     box.innerHTML=logo?`<img src="${logo}" alt="School logo" style="max-height:54px;max-width:100%;object-fit:contain">`:'<span style="font-size:11px;color:#888">No logo yet</span>';
   };
 }
+// Motto / archive / search are wired to the server by auth-backend.js. These
+// stand-alone fallbacks keep the buttons safe when the backend is absent.
+if(typeof window.saveMotto!=='function'){
+  window.saveMotto=function(){ const t=document.getElementById('mottoInput'); if(t){state.motto=t.value.slice(0,200);saveUserState();toast('💾 Motto saved locally');} };
+}
+if(typeof window.pushArchive!=='function'){
+  window.pushArchive=function(){ toast('ℹ️ Archiving needs the server connection.'); };
+}
+if(typeof window.runSearch!=='function'){
+  window.runSearch=function(){ toast('ℹ️ Search needs the server connection.'); };
+}
+// Render archive-search results into a dismissible modal overlay.
+function showSearchResults(results,q){
+  let el=document.getElementById('searchModal');
+  if(!el){el=document.createElement('div');el.id='searchModal';el.className='search-overlay';document.body.appendChild(el);}
+  let h=`<div class="search-modal"><div class="search-head"><b>Archive results</b>`+
+        `<span style="color:#888;font-weight:400"> — ${results.length} found${q?(' for “'+esc(q)+'”'):''}</span>`+
+        `<button onclick="closeSearch()" class="search-x">✕</button></div>`;
+  if(!results.length){
+    h+=`<div style="padding:16px;color:#999">No matching records in the archive. Results appear here once a school admin has PUSHed past exams.</div>`;
+  }else{
+    h+=`<div class="search-body"><table class="search-tbl"><tr><th>Year</th><th>Term</th><th>Exam</th><th>Grade</th><th>Assess No</th><th>Name</th><th>Avg %</th></tr>`;
+    results.forEach(r=>{
+      const avg=avgPctFromRaws(r.raws,r.outOf);
+      h+=`<tr><td>${esc(String(r.year||''))}</td><td>${esc(String(r.term||''))}</td><td>${esc(r.exam||'')}</td><td>${r.grade}</td><td>${esc(r.adm||'')}</td><td style="text-align:left">${esc(r.name||'')}</td><td class="bold">${avg!==null?avg+'%':'-'}</td></tr>`;
+    });
+    h+=`</table></div>`;
+  }
+  h+=`</div>`;
+  el.innerHTML=h;el.style.display='flex';
+}
+function closeSearch(){const el=document.getElementById('searchModal');if(el)el.style.display='none';}
 
 // ========== ENTER APP ==========
 function enterApp(){
@@ -374,6 +418,19 @@ function buildSidebar(){
        `<input type="file" id="schoolLogoInput" accept="image/png,image/jpeg" style="display:none" onchange="onSchoolLogoPicked(this)"></div>`;
   }
 
+  // School admin tools: motto + PUSH results to the searchable archive.
+  if(isSchoolAdmin()){
+    h+=`<div class="side-tool"><div class="ps-label">School Motto</div>`+
+       `<textarea id="mottoInput" rows="2" placeholder="e.g. Strive for Excellence" style="width:100%;box-sizing:border-box;font-size:11px;padding:5px;border:1px solid #d8cbef;border-radius:6px;resize:vertical">${esc(state.motto||'')}</textarea>`+
+       `<button class="grade-btn" onclick="saveMotto()" style="margin-top:5px;background:#5B18C4;color:#fff;border:none;font-weight:700">💾 Save Motto</button></div>`;
+    h+=`<button class="grade-btn" onclick="pushArchive()" title="Save the current results into the searchable 3-year archive" style="background:#00796B;color:#fff;font-weight:800;border:none">📌 PUSH to Archive</button>`;
+  }
+
+  // Search the archive — admins search the whole school, class teachers their grade.
+  h+=`<div class="side-tool"><div class="ps-label">Search Archive</div>`+
+     `<input id="searchQ" placeholder="Name or Assess No" style="width:100%;box-sizing:border-box;font-size:11px;padding:5px;border:1px solid #d8cbef;border-radius:6px">`+
+     `<button class="grade-btn" onclick="runSearch()" style="margin-top:5px;background:#3949AB;color:#fff;border:none;font-weight:700">🔎 Search</button></div>`;
+
   // Payment status per grade
   h+='<div class="pay-status"><div class="ps-label">Report Access</div>';
   if(isGradePaid(currentGrade)){h+=`<span class="ps-badge paid">✅ Paid — Unlocked</span>`}
@@ -404,7 +461,7 @@ function renderEntry(){
 
   let h='<table class="entry-table" id="entryTbl"><thead>';
   // Row: Subject names + Out Of
-  h+='<tr class="r3"><th class="frozen fro-no">NO</th><th class="frozen fro-adm">ADM NO</th><th class="frozen fro-name">LEARNER NAME</th>';
+  h+='<tr class="r3"><th class="frozen fro-no">NO</th><th class="frozen fro-adm">ASSESS NO</th><th class="frozen fro-name">LEARNER NAME</th>';
   cfg.subjects.forEach((s,si)=>{
     h+=`<th colspan="4" class="col-group" style="border-left:3px solid var(--g1)">${s.n} <input type="number" min="1" max="100" value="${gd.outOf[si]}" onchange="updateOutOf(${si},this.value)" title="Max marks (1-100)"> /</th>`;
   });
@@ -424,8 +481,8 @@ function renderEntry(){
     const comp=computedAll[i];
     h+=`<tr data-lr="${i}">`;
     h+=`<td class="frozen fro-no">${lr.name?(i+1):''}</td>`;
-    h+=`<td class="frozen fro-adm"><input value="${esc(lr.adm)}" onchange="updAdm(${i},this.value)" placeholder="ADM" style="width:55px;border:none;background:transparent;font-size:10px"></td>`;
-    h+=`<td class="frozen fro-name"><input value="${esc(lr.name)}" onchange="updName(${i},this.value)" placeholder="Learner Name" style="width:100%;border:none;background:transparent;font-size:10px;font-weight:600"></td>`;
+    h+=`<td class="frozen fro-adm"><input value="${esc(lr.adm)}" onchange="updAdm(${i},this.value)" onpaste="pasteCol(event,${i},'adm')" placeholder="ASSESS NO" title="Assessment number — paste a whole column here" style="width:55px;border:none;background:transparent;font-size:10px"></td>`;
+    h+=`<td class="frozen fro-name"><input value="${esc(lr.name)}" onchange="updName(${i},this.value)" onpaste="pasteCol(event,${i},'name')" placeholder="Learner Name" title="Paste a whole column of names here" style="width:100%;border:none;background:transparent;font-size:10px;font-weight:600"></td>`;
 
     cfg.subjects.forEach((s,si)=>{
       const raw=lr.raws[si];
@@ -548,6 +605,24 @@ function computePositions(computedAll){
 // ========== INPUT HANDLERS ==========
 function updName(i,v){state.grades[currentGrade].learners[i].name=v.trim();debounceSave();renderEntry()}
 function updAdm(i,v){state.grades[currentGrade].learners[i].adm=v.trim();debounceSave()}
+// Paste a whole column of names or assessment numbers starting at row `start`.
+// Accepts newline- or tab-separated clipboard text (e.g. copied from Excel).
+function pasteCol(e,start,field){
+  const cd=e.clipboardData||window.clipboardData;if(!cd)return;
+  const txt=cd.getData('text');if(!txt)return;
+  const parts=txt.replace(/\r/g,'').split('\n').map(s=>s.replace(/\t.*$/,'').trim());
+  // Single value with no line breaks: let the browser handle a normal paste.
+  if(parts.length<=1)return;
+  e.preventDefault();
+  const gd=state.grades[currentGrade];
+  let r=start;
+  parts.forEach(val=>{
+    if(r>=gd.learners.length)return;
+    if(val!=='') gd.learners[r][field]=val;
+    r++;
+  });
+  saveUserState();renderEntry();toast('📋 Pasted '+parts.filter(p=>p!=='').length+' rows');
+}
 function updRaw(i,si,el){
   // Saves data only — NO re-render so user can keep typing multi-digit numbers
   const gd=state.grades[currentGrade];
@@ -649,7 +724,7 @@ function renderScoresheet(){
   h+=`<h2 style="text-align:center;font-size:16px">${esc(currentUser.school||'My School')}</h2>`;
   h+=`<div style="text-align:center;font-size:11px;color:var(--gray);margin-bottom:8px">Grade ${currentGrade} — Merit / Class List &nbsp;|&nbsp; ${state.examName||'[Exam]'} &nbsp;|&nbsp; Term ${state.examTerm||'__'} &nbsp;|&nbsp; ${state.examYear||'____'}</div>`;
   if(paid)h+=`<button onclick="exportScoresheetExcel()" style="float:right;background:var(--g1);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;margin-bottom:6px">📥 Export Excel</button><div style="clear:both"></div>`;
-  h+=`<table><tr><th>Pos</th><th>ADM</th><th style="text-align:left">Learner</th>`;
+  h+=`<table><tr><th>Pos</th><th>Assess No</th><th style="text-align:left">Learner</th>`;
   cfg.subjects.forEach(s=>h+=`<th>${s.n}<br><small>P/L (1-8)</small></th>`);
   h+=`<th>AVG P/L</th><th>AVG %</th><th>Grade</th><th>Pts</th></tr>`;
 
@@ -664,9 +739,14 @@ function renderScoresheet(){
     });
     h+=`<td class="pl-${computed[x.i].avgPL}" style="font-weight:800;font-size:16px">${computed[x.i].avgPL||'-'}</td><td class="bold">${x.avg||''}</td><td class="bold">${computed[x.i].avgGrade||''}</td><td>${computed[x.i].totalPts||''}</td></tr>`;
   });
+  // Footer: class average per subject (%) and overall total/average.
+  const mss=computeMSS(computed);
+  h+=`<tr class="totals-row"><td colspan="3" style="text-align:right;font-weight:800">CLASS AVERAGE →</td>`;
+  cfg.subjects.forEach((s,si)=>{
+    h+=`<td style="font-weight:800">${mss.pctAvgs[si]!==null?mss.pctAvgs[si]+'%':''}</td>`;
+  });
+  h+=`<td class="bold">${mss.overallAvg!==null?plLevel(mss.overallAvg).level:''}</td><td class="bold">${mss.overallAvg!==null?mss.overallAvg+'%':''}</td><td class="bold">${mss.overallGrade||''}</td><td>${mss.overallPts||''}</td></tr>`;
   h+='</table>';
-
-  // Lock overlay if unpaid
   if(!paid){
     h+=`<div class="lock-bg"><div class="lock-icon">🔒</div><div class="lock-msg">Merit list is locked.<br>Pay KSh 100 via M-Pesa to unlock.</div><button class="lock-btn" onclick="openMpesa()">Pay with M-Pesa</button></div>`;
   }
@@ -696,22 +776,26 @@ function renderReports(){
       <div class="subtitle">Grade ${currentGrade} Individual Report Card &nbsp;|&nbsp; ${state.examName||'[Exam]'} &nbsp;|&nbsp; Term ${state.examTerm||'__'} &nbsp;|&nbsp; ${state.examYear||'____'}</div>
       <div class="learner-info">
         <div><span class="lbl">Name:</span> ${esc(lr.name)}</div>
-        <div><span class="lbl">ADM No:</span> ${esc(lr.adm)}</div>
+        <div><span class="lbl">Assess No:</span> ${esc(lr.adm)}</div>
         <div><span class="lbl">Position:</span> ${pos} out of ${positions.filter(x=>x.name).length}</div>
         <div><span class="lbl">Mean Grade:</span> ${comp.meanGrade||'-'}</div>
       </div>
       <table class="rpt">
-        <tr><th>Subject</th><th>Raw</th><th>Out Of</th><th>%</th><th>P/L</th><th>KNEC</th><th>Pts</th><th>Remarks</th></tr>`;
+        <tr><th>Subject</th><th>Raw</th><th>Out Of</th><th>%</th><th>P/L</th><th>CBE Level</th><th>KNEC</th><th>Pts</th><th>Remarks</th></tr>`;
     cfg.subjects.forEach((s,si)=>{
       const raw=lr.raws[si];const pct=comp.pcts[si];const pl=comp.pls[si];const knec=comp.knecs[si];
       const kObj=knec?KNEC_GRADES.find(k=>k.g===knec):null;const pts=kObj?kObj.pts:'';
       const remark=generateRemark(pct,pl);
-      h+=`<tr><td class="subj-name">${s.n}</td><td>${raw==='ABS'?'ABS':raw!==null?raw:''}</td><td>${gd.outOf[si]}</td><td>${pct!==null?pct:''}</td><td>${pl||''}</td><td>${knec||''}</td><td>${pts}</td><td style="text-align:left;font-size:9px">${remark}</td></tr>`;
+      const band=pct!==null?plLevel(pct).band:'';
+      h+=`<tr><td class="subj-name">${s.n}</td><td>${raw==='ABS'?'ABS':raw!==null?raw:''}</td><td>${gd.outOf[si]}</td><td>${pct!==null?pct:''}</td><td>${pl||''}</td><td style="font-weight:700">${band}</td><td>${knec||''}</td><td>${pts}</td><td style="text-align:left;font-size:9px">${remark}</td></tr>`;
     });
-    h+=`<tr class="totals-row"><td style="text-align:left">TOTALS / AVERAGES</td><td></td><td></td><td>${comp.avgPct||''}</td><td style="font-weight:800">${comp.avgPL||''}</td><td>${comp.meanGrade||''}</td><td>${comp.totalPts||''}</td><td></td></tr></table>`;
+    const avgBand=comp.avgPct!==null?plLevel(comp.avgPct).band:'';
+    h+=`<tr class="totals-row"><td style="text-align:left">TOTALS / AVERAGES</td><td></td><td></td><td>${comp.avgPct||''}</td><td style="font-weight:800">${comp.avgPL||''}</td><td style="font-weight:800">${avgBand}</td><td>${comp.meanGrade||''}</td><td>${comp.totalPts||''}</td><td></td></tr></table>`;
     h+=`<div class="legend">KNEC: A(84-100=12pts) A-(80-83=11) B+(75-79=10) B(70-74=9) B-(65-69=8) C+(60-64=7) C(55-59=6) C-(50-54=5) D+(45-49=4) D(40-44=3) D-(35-39=2) E(0-34=1)</div>`;
     h+=`<div class="legend">P/L (CBE Levels 1–8): 8=EE1 (90-100%) | 7=EE2 (75-89%) | 6=ME1 (58-74%) | 5=ME2 (41-57%) | 4=AE1 (31-40%) | 3=AE2 (21-30%) | 2=BE1 (11-20%) | 1=BE2 (1-10%)</div>`;
     h+=`<div class="sig-lines"><div>Class Teacher<br>________________</div><div>Head Teacher<br>________________</div><div>Parent/Guardian<br>________________</div></div>`;
+    h+=buildTrendGraph(lr,comp);
+    if(state.motto&&state.motto.trim()){h+=`<div class="rpt-motto">“${esc(state.motto.trim())}”</div>`;}
     if(!locked)h+=`<button onclick="downloadReportPDF(${i})" style="margin-top:10px;width:100%;padding:8px;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;background:var(--g1);color:#fff">📄 Download PDF</button>`;
     if(locked){
       h+=`<div class="lock-bg"><div class="lock-icon">🔒</div><div class="lock-msg">Report cards are locked.<br>Pay KSh 100 via M-Pesa to download.</div><button class="lock-btn" onclick="openMpesa()">Pay with M-Pesa</button></div>`;
@@ -733,6 +817,72 @@ function generateRemark(pct,pl){
   if(pl===2)return'Significant improvement needed. Seek help.';
   if(pl===1)return'Urgent intervention required. Needs close support.';
   return'';
+}
+
+// Average % for a set of raw marks against their out-of maxima.
+function avgPctFromRaws(raws,outOf){
+  if(!Array.isArray(raws)||!Array.isArray(outOf))return null;
+  let sum=0,n=0;
+  raws.forEach((r,i)=>{
+    if(r===null||r===undefined||r==='ABS')return;
+    const max=outOf[i];if(!max)return;
+    const num=parseFloat(r);if(isNaN(num))return;
+    sum+=(num/max)*100;n++;
+  });
+  if(!n)return null;
+  return Math.round(sum/n);
+}
+
+// A learner's total-average history across the last 3 archived years, plus the
+// present exam. Matched by assessment number (preferred) or name. Rendered as a
+// small inline SVG line graph placed after the signatures on the report card.
+function buildTrendGraph(lr,comp){
+  const key=(lr.adm||'').trim().toLowerCase();
+  const nm=(lr.name||'').trim().toLowerCase();
+  const pts=[];
+  (state.archives||[]).forEach(ar=>{
+    let found=null;
+    Object.keys(ar.grades||{}).forEach(g=>{
+      const gd=ar.grades[g]||{};
+      (gd.learners||[]).forEach(l=>{
+        const la=(l.adm||'').trim().toLowerCase();
+        const ln=(l.name||'').trim().toLowerCase();
+        const match=key?la===key:(nm&&ln===nm);
+        if(match){const a=avgPctFromRaws(l.raws,gd.outOf);if(a!==null)found=a;}
+      });
+    });
+    if(found!==null){
+      pts.push({label:(ar.year||'')+(ar.term?(' T'+ar.term):''),val:found,
+                sort:parseInt(ar.year,10)*10+(parseInt(ar.term,10)||0)});
+    }
+  });
+  // Add the present exam as the latest point.
+  if(comp&&comp.avgPct!==null&&comp.avgPct!==undefined){
+    pts.push({label:(state.examYear||'Now')+(state.examTerm?(' T'+state.examTerm):''),
+              val:comp.avgPct,sort:9e9});
+  }
+  pts.sort((a,b)=>a.sort-b.sort);
+  if(pts.length<2){
+    return `<div class="trend-box"><div class="trend-title">Performance Trend (last 3 years)</div>`+
+           `<div style="font-size:9px;color:#999;padding:6px">Not enough archived history yet — the trend graph appears after results are pushed to the archive over time.</div></div>`;
+  }
+  const W=440,H=120,pad=26;
+  const xs=(i)=>pad+(i*(W-2*pad)/(pts.length-1));
+  const ys=(v)=>H-pad-((v/100)*(H-2*pad));
+  let poly='',dots='',labels='';
+  pts.forEach((p,i)=>{
+    const x=xs(i),y=ys(p.val);
+    poly+=(i?' ':'')+x.toFixed(1)+','+y.toFixed(1);
+    dots+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="#5B18C4"></circle>`+
+          `<text x="${x.toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="9" text-anchor="middle" fill="#333">${p.val}%</text>`;
+    labels+=`<text x="${x.toFixed(1)}" y="${H-8}" font-size="8" text-anchor="middle" fill="#666">${esc(p.label)}</text>`;
+  });
+  const svg=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:460px">`+
+    `<line x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}" stroke="#ccc"></line>`+
+    `<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${H-pad}" stroke="#ccc"></line>`+
+    `<polyline points="${poly}" fill="none" stroke="#5B18C4" stroke-width="2"></polyline>`+
+    dots+labels+`</svg>`;
+  return `<div class="trend-box"><div class="trend-title">Performance Trend (last 3 years)</div>${svg}</div>`;
 }
 
 // ========== KPI DASHBOARD ==========
