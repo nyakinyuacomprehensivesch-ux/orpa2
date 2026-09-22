@@ -165,6 +165,9 @@
       grades: d.grades || {},
       submitted: d.submitted || {},
       submittedAt: d.submittedAt || {},
+      archives: Array.isArray(d.archives) ? d.archives : [],
+      graduates: Array.isArray(d.graduates) ? d.graduates : [],
+      motto: typeof d.motto === 'string' ? d.motto : '',
     };
     localStorage.setItem('nyak_' + currentUser.id + '_data', JSON.stringify(localState));
     enterApp();
@@ -322,6 +325,40 @@
   };
 
   // ---------- School features (submit + logo) ----------
+  // Save the school motto (admins only). Shown on report-card footers.
+  window.saveMotto = async function () {
+    const t = document.getElementById('mottoInput');
+    const motto = t ? t.value.slice(0, 200) : '';
+    try {
+      const r = await api('/api/school/motto', { method: 'PUT', body: JSON.stringify({ motto }) });
+      if (typeof state === 'object') state.motto = r.motto || '';
+      try { saveUserState(); } catch (e) {}
+      toast('💾 Motto saved.');
+    } catch (e) { toast('❌ ' + e.message); }
+  };
+
+  // PUSH the current results into the searchable 3-year archive (admins only).
+  window.pushArchive = async function () {
+    if (!window.confirm('Push the current exam results into the archive now? Snapshots are kept for the last 3 years and power the report-card trend graph.')) return;
+    try { saveUserState(); pushStateToServer(); } catch (e) {}
+    // Give the state push a moment to land before archiving on the server.
+    setTimeout(async function () {
+      try {
+        const r = await api('/api/school/archive', { method: 'POST', body: JSON.stringify({}) });
+        toast('📌 Archived ' + r.archived.year + (r.archived.term ? (' T' + r.archived.term) : '') + '. Total snapshots: ' + r.count);
+      } catch (e) { toast('❌ ' + e.message); }
+    }, 400);
+  };
+
+  // Search the archive; results shown in a modal by app.js.
+  window.runSearch = async function () {
+    const q = (document.getElementById('searchQ') || {}).value || '';
+    try {
+      const r = await api('/api/school/search?q=' + encodeURIComponent(q.trim()));
+      if (typeof showSearchResults === 'function') showSearchResults(r.results || [], q.trim());
+    } catch (e) { toast('❌ ' + e.message); }
+  };
+
   // Submit the current grade (or, for an admin, all grades) to the zone so it
   // appears on the owner's ranking dashboard.
   window.submitToOwner = async function () {
