@@ -93,6 +93,18 @@ tr:last-child td{border-bottom:none}
   </div>
 
   <div class="panel">
+    <h2>🎓 End-of-Year Promotion <span style="font-weight:400;color:#6b7280;font-size:12px">(advances every learner one grade, zone-wide)</span></h2>
+    <div style="padding:14px 18px">
+      <div class="hint" style="padding:0 0 8px">This moves every learner up one grade across all schools: Grade&nbsp;8&rarr;9, 7&rarr;8 &hellip; 1&rarr;2. Grade&nbsp;9 leavers become <b>Graduates</b> (kept 1 year). Grade&nbsp;1 is cleared for the new intake. Names and assessment numbers carry forward; marks reset for the new class. An automatic backup is taken per school first. <b>This cannot be undone from here.</b></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input id="promoteConfirm" placeholder="Type CONFIRM" style="padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px">
+        <button class="btn d" style="padding:8px 16px;font-weight:700" onclick="runPromote()">⚠️ Promote All Learners</button>
+      </div>
+      <div id="promoteMsg" style="padding:8px 0 0;font-size:13px"></div>
+    </div>
+  </div>
+
+  <div class="panel">
     <h2>🌐 Zone Logo (watermark on all downloads)</h2>
     <div style="padding:14px 18px;display:flex;gap:16px;align-items:center;flex-wrap:wrap">
       <div id="zoneLogoPreview" style="width:120px;height:80px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--soft);overflow:hidden"><span style="font-size:11px;color:var(--muted)">No zone logo</span></div>
@@ -381,6 +393,21 @@ async function loadOverview(){
   try{const d=await api('/api/admin/overview');renderOverview(d)}catch(e){showErr(e.message)}
 }
 
+async function runPromote(){
+  const inp=document.getElementById('promoteConfirm');
+  const msg=document.getElementById('promoteMsg');
+  const val=(inp&&inp.value||'').trim();
+  if(val!=='CONFIRM'){msg.style.color='#b91c1c';msg.textContent='Type CONFIRM (in capitals) to run the promotion.';return}
+  if(!window.confirm('Promote every learner one grade across ALL schools? Grade 9 leavers move to Graduates and Grade 1 is cleared. This cannot be undone.'))return;
+  msg.style.color='#374151';msg.textContent='Promoting…';
+  try{
+    const r=await api('/api/admin/promote',{method:'POST',headers:hdr(),body:JSON.stringify({confirm:'CONFIRM'})});
+    msg.style.color='#047857';
+    msg.textContent='✅ Done. '+r.schools+' school(s) processed — '+r.promoted+' learner(s) promoted, '+r.graduated+' graduated ('+r.gradYear+').';
+    if(inp)inp.value='';
+  }catch(e){msg.style.color='#b91c1c';msg.textContent='❌ '+e.message;}
+}
+
 function renderLive(sessions){
   const wrap=document.getElementById('live');
   wrap.innerHTML='';
@@ -415,3 +442,4 @@ function renderLive(sessions){
 </script>
 </body>
 </html>
+
