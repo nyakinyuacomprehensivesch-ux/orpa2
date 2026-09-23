@@ -92,7 +92,7 @@ body{font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--gray-l);col
 .content{flex:1;overflow:hidden;display:flex;flex-direction:column}
 
 /* ===== ENTRY TABLE ===== */
-.sheet-wrap{flex:1;overflow:auto;position:relative;scrollbar-width:thin;scrollbar-color:var(--g3) var(--g5)}
+.sheet-wrap{flex:1;overflow:scroll;position:relative;scrollbar-width:thin;scrollbar-color:var(--g3) var(--g5)}
 .sheet-wrap::-webkit-scrollbar{width:12px;height:12px}
 .sheet-wrap::-webkit-scrollbar-track{background:var(--g5);border:1px solid #e0e0e0;border-radius:6px}
 .sheet-wrap::-webkit-scrollbar-thumb{background:var(--g3);border-radius:6px;border:1px solid var(--g5);min-height:40px}
@@ -110,10 +110,10 @@ body{font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--gray-l);col
 /* NO / ADM / NAME columns are UNFROZEN for ALL grades (1-9) per request:
    they now scroll with the rest of the sheet instead of sticking. */
 .entry-table th.frozen,.entry-table td.frozen{position:static;background:inherit}
-.entry-table th.fro-no{min-width:32px;width:32px}
+.entry-table th.fro-no{min-width:40px;width:40px}
 .entry-table th.fro-adm{min-width:64px;width:64px}
 .entry-table th.fro-name{min-width:140px;width:140px}
-.entry-table td.fro-no{min-width:32px;width:32px;text-align:center;font-weight:600;color:var(--gray);font-size:9px}
+.entry-table td.fro-no{min-width:40px;width:40px;text-align:center;font-weight:600;color:var(--gray);font-size:9px}
 .entry-table td.fro-adm{min-width:64px;width:64px}
 .entry-table td.fro-name{min-width:140px;width:140px}
 .entry-table .subj-first{border-left:3px solid var(--g1)}
@@ -168,11 +168,12 @@ td.pl-2,td.pl-1{color:var(--red)}
 .report-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 28px;max-width:680px;margin:0 auto 16px;position:relative}
 .report-card .school-name{text-align:center;font-size:16px;font-weight:800;color:var(--g1);border-bottom:3px double var(--g1);padding-bottom:5px;margin-bottom:5px}
 .report-card .subtitle{text-align:center;font-size:10px;color:var(--gray);margin-bottom:10px}
+.report-card .rpt-contact{text-align:center;font-size:11px;font-weight:600;color:#000;margin:2px 0 4px;line-height:1.35}
 .report-card .learner-info{display:grid;grid-template-columns:1fr 1fr;gap:3px 16px;margin-bottom:10px;font-size:11px}
 .report-card .learner-info span.lbl{font-weight:700;color:var(--g2)}
 .report-card table.rpt{width:100%;border-collapse:collapse;margin:8px 0}
 .report-card table.rpt th{background:var(--g1);color:#fff;padding:4px 5px;font-size:8px;text-transform:uppercase}
-.report-card table.rpt td{border:1px solid #ccc;padding:3px 5px;font-size:10px;text-align:center}
+.report-card table.rpt td{border:1px solid #ccc;padding:3px 5px;font-size:11px;color:#000;font-weight:500;text-align:center}
 .report-card table.rpt td.subj-name{text-align:left;font-weight:600;color:var(--g2)}
 .report-card .totals-row td{font-weight:700;background:var(--g5)}
 .report-card .legend{font-size:8px;color:var(--gray);margin-top:6px;line-height:1.4}

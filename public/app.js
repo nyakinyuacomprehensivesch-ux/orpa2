@@ -53,7 +53,7 @@ let sessionToken=null;
 function userKey(){return 'nyak_'+currentUser.id}
 function globalKey(k){return 'nyak_global_'+k}
 
-let state={examName:'',examTerm:'',examYear:'',grades:{},archives:[],graduates:[],motto:''};
+let state={examName:'',examTerm:'',examYear:'',grades:{},archives:[],graduates:[],motto:'',schoolContact:''};
 
 function defaultGrade(g){
   const cfg=GRADE_CFG.find(c=>c.g===g);
@@ -99,6 +99,7 @@ function loadUserState(){
   if(!Array.isArray(state.archives))state.archives=[];
   if(!Array.isArray(state.graduates))state.graduates=[];
   if(typeof state.motto!=='string')state.motto='';
+  if(typeof state.schoolContact!=='string')state.schoolContact='';
   for(let g=1;g<=9;g++){ if(!state.grades[g]) state.grades[g]=defaultGrade(g); else reconcileGrade(g); }
   const en=document.getElementById('examName');if(en)en.value=state.examName||'';
   const et=document.getElementById('examTerm');if(et)et.value=state.examTerm||'';
@@ -322,6 +323,7 @@ if(typeof window.refreshLogoPreview!=='function'){
 // stand-alone fallbacks keep the buttons safe when the backend is absent.
 if(typeof window.saveMotto!=='function'){
   window.saveMotto=function(){ const t=document.getElementById('mottoInput'); if(t){state.motto=t.value.slice(0,200);saveUserState();toast('💾 Motto saved locally');} };
+  window.saveSchoolContact=function(){ const t=document.getElementById('schoolContactInput'); if(t){state.schoolContact=t.value.slice(0,200);saveUserState();toast('💾 School address & email saved locally');} };
 }
 if(typeof window.pushArchive!=='function'){
   window.pushArchive=function(){ toast('ℹ️ Archiving needs the server connection.'); };
@@ -423,6 +425,9 @@ function buildSidebar(){
     h+=`<div class="side-tool"><div class="ps-label">School Motto</div>`+
        `<textarea id="mottoInput" rows="2" placeholder="e.g. Strive for Excellence" style="width:100%;box-sizing:border-box;font-size:11px;padding:5px;border:1px solid #d8cbef;border-radius:6px;resize:vertical">${esc(state.motto||'')}</textarea>`+
        `<button class="grade-btn" onclick="saveMotto()" style="margin-top:5px;background:#5B18C4;color:#fff;border:none;font-weight:700">💾 Save Motto</button></div>`;
+    h+=`<div class="side-tool"><div class="ps-label">School Address & Email</div>`+
+       `<textarea id="schoolContactInput" rows="3" placeholder="e.g. P.O. Box 123-00100, Nairobi&#10;info@myschool.ac.ke" style="width:100%;box-sizing:border-box;font-size:11px;padding:5px;border:1px solid #d8cbef;border-radius:6px;resize:vertical">${esc(state.schoolContact||'')}</textarea>`+
+       `<button class="grade-btn" onclick="saveSchoolContact()" style="margin-top:5px;background:#5B18C4;color:#fff;border:none;font-weight:700">💾 Save Address & Email</button></div>`;
     h+=`<button class="grade-btn" onclick="pushArchive()" title="Save the current results into the searchable 3-year archive" style="background:#00796B;color:#fff;font-weight:800;border:none">📌 PUSH to Archive</button>`;
   }
 
@@ -743,7 +748,7 @@ function renderScoresheet(){
   const mss=computeMSS(computed);
   h+=`<tr class="totals-row"><td colspan="3" style="text-align:right;font-weight:800">CLASS AVERAGE →</td>`;
   cfg.subjects.forEach((s,si)=>{
-    h+=`<td style="font-weight:800">${mss.pctAvgs[si]!==null?mss.pctAvgs[si]+'%':''}</td>`;
+    h+=`<td style="font-weight:800">${mss.pctAvgs[si]!==null?plLevel(mss.pctAvgs[si]).level:''}</td>`;
   });
   h+=`<td class="bold">${mss.overallAvg!==null?plLevel(mss.overallAvg).level:''}</td><td class="bold">${mss.overallAvg!==null?mss.overallAvg+'%':''}</td><td class="bold">${mss.overallGrade||''}</td><td>${mss.overallPts||''}</td></tr>`;
   h+='</table>';
@@ -773,6 +778,7 @@ function renderReports(){
     const locked=!paid;
     h+=`<div class="report-card ${locked?'lock-overlay':''}">
       <div class="school-name">${esc(currentUser.school||'My School')}</div>
+      ${state.schoolContact&&state.schoolContact.trim()?`<div class="rpt-contact">${state.schoolContact.trim().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>')}</div>`:''}
       <div class="subtitle">Grade ${currentGrade} Individual Report Card &nbsp;|&nbsp; ${state.examName||'[Exam]'} &nbsp;|&nbsp; Term ${state.examTerm||'__'} &nbsp;|&nbsp; ${state.examYear||'____'}</div>
       <div class="learner-info">
         <div><span class="lbl">Name:</span> ${esc(lr.name)}</div>
