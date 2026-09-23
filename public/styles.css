@@ -76,7 +76,7 @@ body{font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--gray-l);col
 .topbar .user-dropdown .dd-item.danger{color:var(--red)}
 
 /* MAIN LAYOUT */
-.main{display:flex;flex:1;overflow:hidden}
+.main{display:flex;flex:1;overflow:hidden;min-height:0}
 .sidebar{width:150px;background:var(--g1);color:#fff;display:flex;flex-direction:column;padding:8px 0;overflow-y:auto;flex-shrink:0}
 .sidebar .grade-btn{padding:7px 12px;cursor:pointer;font-size:11px;font-weight:600;border:none;background:transparent;color:rgba(255,255,255,.7);text-align:left;transition:.15s;border-left:3px solid transparent}
 .sidebar .grade-btn:hover{background:rgba(255,255,255,.1);color:#fff}
@@ -89,10 +89,11 @@ body{font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--gray-l);col
 .sidebar .pay-status .ps-badge.free{background:rgba(255,255,255,.2);color:#fff}
 .sidebar .pay-status .ps-badge.paid{background:#4CAF50;color:#fff}
 .sidebar .pay-status .ps-badge.locked{background:#FF9800;color:#fff}
-.content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.content{flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+#viewEntry{min-height:0}
 
 /* ===== ENTRY TABLE ===== */
-.sheet-wrap{flex:1;overflow:scroll;position:relative;scrollbar-width:thin;scrollbar-color:var(--g3) var(--g5)}
+.sheet-wrap{flex:1;min-height:0;overflow:scroll;position:relative;scrollbar-width:thin;scrollbar-color:var(--g3) var(--g5)}
 .sheet-wrap::-webkit-scrollbar{width:12px;height:12px}
 .sheet-wrap::-webkit-scrollbar-track{background:var(--g5);border:1px solid #e0e0e0;border-radius:6px}
 .sheet-wrap::-webkit-scrollbar-thumb{background:var(--g3);border-radius:6px;border:1px solid var(--g5);min-height:40px}
@@ -110,10 +111,10 @@ body{font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--gray-l);col
 /* NO / ADM / NAME columns are UNFROZEN for ALL grades (1-9) per request:
    they now scroll with the rest of the sheet instead of sticking. */
 .entry-table th.frozen,.entry-table td.frozen{position:static;background:inherit}
-.entry-table th.fro-no{min-width:40px;width:40px}
+.entry-table th.fro-no{min-width:20px;width:20px}
 .entry-table th.fro-adm{min-width:64px;width:64px}
 .entry-table th.fro-name{min-width:140px;width:140px}
-.entry-table td.fro-no{min-width:40px;width:40px;text-align:center;font-weight:600;color:var(--gray);font-size:9px}
+.entry-table td.fro-no{min-width:20px;width:20px;text-align:center;font-weight:600;color:var(--gray);font-size:9px}
 .entry-table td.fro-adm{min-width:64px;width:64px}
 .entry-table td.fro-name{min-width:140px;width:140px}
 .entry-table .subj-first{border-left:3px solid var(--g1)}
@@ -173,7 +174,8 @@ td.pl-2,td.pl-1{color:var(--red)}
 .report-card .learner-info span.lbl{font-weight:700;color:var(--g2)}
 .report-card table.rpt{width:100%;border-collapse:collapse;margin:8px 0}
 .report-card table.rpt th{background:var(--g1);color:#fff;padding:4px 5px;font-size:8px;text-transform:uppercase}
-.report-card table.rpt td{border:1px solid #ccc;padding:3px 5px;font-size:11px;color:#000;font-weight:500;text-align:center}
+.report-card table.rpt td{border:1px solid #ccc;padding:3px 5px;font-size:10px;color:#000;text-align:center}
+.report-card table.rpt td.rpt-em{font-size:12px;font-weight:800;color:#000}
 .report-card table.rpt td.subj-name{text-align:left;font-weight:600;color:var(--g2)}
 .report-card .totals-row td{font-weight:700;background:var(--g5)}
 .report-card .legend{font-size:8px;color:var(--gray);margin-top:6px;line-height:1.4}
@@ -276,9 +278,12 @@ td.pl-2,td.pl-1{color:var(--red)}
 
 /* Print */
 @media print{
+  @page{size:A5;margin:8mm}
   .topbar,.sidebar,.mpesa-overlay,.lock-bg{display:none!important}
   .main{height:auto!important}.content{overflow:visible!important}
-  .report-card,.scorecard{box-shadow:none;break-inside:avoid}
+  .report-card,.scorecard{box-shadow:none;break-inside:avoid;page-break-after:always;padding:14px 18px;margin:0 auto}
+  .report-card .sig-lines{margin-top:10px}
+  .report-card .legend{margin-top:4px}
   body{background:#fff}
 }
 @media(max-width:768px){

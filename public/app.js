@@ -793,10 +793,10 @@ function renderReports(){
       const kObj=knec?KNEC_GRADES.find(k=>k.g===knec):null;const pts=kObj?kObj.pts:'';
       const remark=generateRemark(pct,pl);
       const band=pct!==null?plLevel(pct).band:'';
-      h+=`<tr><td class="subj-name">${s.n}</td><td>${raw==='ABS'?'ABS':raw!==null?raw:''}</td><td>${gd.outOf[si]}</td><td>${pct!==null?pct:''}</td><td>${pl||''}</td><td style="font-weight:700">${band}</td><td>${knec||''}</td><td>${pts}</td><td style="text-align:left;font-size:9px">${remark}</td></tr>`;
+      h+=`<tr><td class="subj-name">${s.n}</td><td>${raw==='ABS'?'ABS':raw!==null?raw:''}</td><td>${gd.outOf[si]}</td><td>${pct!==null?pct:''}</td><td class="rpt-em">${pl||''}</td><td class="rpt-em">${band}</td><td>${knec||''}</td><td>${pts}</td><td style="text-align:left;font-size:9px">${remark}</td></tr>`;
     });
     const avgBand=comp.avgPct!==null?plLevel(comp.avgPct).band:'';
-    h+=`<tr class="totals-row"><td style="text-align:left">TOTALS / AVERAGES</td><td></td><td></td><td>${comp.avgPct||''}</td><td style="font-weight:800">${comp.avgPL||''}</td><td style="font-weight:800">${avgBand}</td><td>${comp.meanGrade||''}</td><td>${comp.totalPts||''}</td><td></td></tr></table>`;
+    h+=`<tr class="totals-row"><td style="text-align:left">TOTALS / AVERAGES</td><td></td><td></td><td>${comp.avgPct||''}</td><td class="rpt-em">${comp.avgPL||''}</td><td class="rpt-em">${avgBand}</td><td>${comp.meanGrade||''}</td><td>${comp.totalPts||''}</td><td></td></tr></table>`;
     h+=`<div class="legend">KNEC: A(84-100=12pts) A-(80-83=11) B+(75-79=10) B(70-74=9) B-(65-69=8) C+(60-64=7) C(55-59=6) C-(50-54=5) D+(45-49=4) D(40-44=3) D-(35-39=2) E(0-34=1)</div>`;
     h+=`<div class="legend">P/L (CBE Levels 1–8): 8=EE1 (90-100%) | 7=EE2 (75-89%) | 6=ME1 (58-74%) | 5=ME2 (41-57%) | 4=AE1 (31-40%) | 3=AE2 (21-30%) | 2=BE1 (11-20%) | 1=BE2 (1-10%)</div>`;
     h+=`<div class="sig-lines"><div>Class Teacher<br>________________</div><div>Head Teacher<br>________________</div><div>Parent/Guardian<br>________________</div></div>`;
