@@ -702,19 +702,18 @@ function showView(v,btn){
   if(btn)btn.classList.add('active');
 
   const map={entry:'viewEntry',scoresheet:'viewScoresheet',reports:'viewReports',kpi:'viewKPI',profile:'viewProfile',payments:'viewPayments'};
-  document.getElementById(map[v]).style.display='block';
-
   if(v==='scoresheet')renderScoresheet();
   if(v==='reports')renderReports();
   if(v==='kpi')renderKPI();
   if(v==='profile')renderProfile();
   if(v==='payments')renderPaymentHistory();
+  document.getElementById(map[v]).style.display=(v==='entry'?'flex':'block');
   closeUserDD();
 }
 function showViewByName(v){
   const map={entry:'viewEntry',scoresheet:'viewScoresheet',reports:'viewReports',kpi:'viewKPI',profile:'viewProfile',payments:'viewPayments'};
   ['viewEntry','viewScoresheet','viewReports','viewKPI','viewProfile','viewPayments'].forEach(p=>document.getElementById(p).style.display='none');
-  document.getElementById(map[v]).style.display='block';
+  document.getElementById(map[v]).style.display=(v==='entry'?'flex':'block');
 }
 
 // ========== SCORE-SHEET VIEW (MERIT LIST) ==========
