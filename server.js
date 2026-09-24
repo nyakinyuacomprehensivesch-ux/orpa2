@@ -898,6 +898,7 @@ async function init() {
     // ephemeral disk and be lost on every redeploy/restart.
     const connected = await db.init();
     if (!connected) db.load();
+    else db.startAutoFlush();
   } catch (e) {
     console.error('[fatal] Could not load the datastore:', e.message);
     process.exit(1);
@@ -921,6 +922,18 @@ async function init() {
 }
 init();
 
-process.on('SIGINT', () => { db.persistSync(); process.exit(0); });
-process.on('SIGTERM', () => { db.persistSync(); process.exit(0); });
+// On shutdown (Render sends SIGTERM on every deploy and on free-tier
+// spin-down) flush all pending/queued database writes BEFORE exiting, so a
+// save made moments earlier is never lost. Handlers are async and wait for the
+// flush to complete instead of exiting immediately.
+let shuttingDown = false;
+async function shutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  try { await db.flushAll(); } catch (_) {}
+  try { db.persistSync(); } catch (_) {}
+  process.exit(0);
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
